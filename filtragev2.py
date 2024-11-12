@@ -27,6 +27,16 @@ def appliquer_filtres(signal, filtres):
                              filtre["b2"], 
                              filtre["gain"]) for filtre in filtres]
 
+def reponse_impulsionnelle(a0, a1, b1, b2, gain, n_samples=1000):
+    h = np.zeros(n_samples)
+    h[0] = 1  # Impulsion unitaire
+    y = np.zeros(n_samples)
+    y[0] = a0 * h[0]
+    y[1] = a0 * h[1] + a1 * h[0] + b1 * y[0]
+    for n in range(2, n_samples):
+        y[n] = a0 * h[n] + a1 * h[n-1] + b1 * y[n-1] + b2 * y[n-2]
+    return y * gain
+
 # Chargement du signal
 freq_ech, data = wavfile.read('LW_20M_amis.wav')
 if len(data.shape) > 1:
@@ -60,7 +70,7 @@ signal_combine_normalise = np.int16(signal_combine / np.max(np.abs(signal_combin
 wavfile.write('wav_filtre_combine.wav', freq_ech, signal_combine_normalise)
 
 # Créer la figure et les axes
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 10))
+fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(15, 15))
 
 # Tracer les signaux temporels
 ax1.plot(t_display, data_display, label='Signal Origine', alpha=0.7)
@@ -81,6 +91,15 @@ ax2.set_xlabel('Fréquence (Hz)')
 ax2.set_ylabel('Magnitude')
 ax2.set_title('Spectres de Fourier')
 ax2.legend()
+
+# Tracer les réponses impulsionnelles
+for i, filtre in enumerate(filtres_numeriques):
+    h = reponse_impulsionnelle(filtre["a0"], filtre["a1"], filtre["b1"], filtre["b2"], filtre["gain"])
+    ax3.plot(h[:200], label=f'Filtre {i+1}')  # Afficher seulement les 200 premiers échantillons
+ax3.set_xlabel('Échantillons')
+ax3.set_ylabel('Amplitude')
+ax3.set_title('Réponses Impulsionnelles')
+ax3.legend()
 
 plt.tight_layout()
 plt.show()
